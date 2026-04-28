@@ -50,7 +50,7 @@ if (okBtn && okBtn.asElement()) {
         
         // 3. LANGSUNG LANJUT KE HALAMAN DOKUMEN
         const docNumber = process.env.DOC_NUMBER;
-        const targetUrl = `https://erp.tangki.id/inventory-move/${encodeURIComponent(docNumber)}`;
+        const targetUrl = `https://erp.tangki.id/webui/index.zul`;
         console.log(`Menuju halaman dokumen: ${targetUrl}`);
         
         // Tambahkan timeout yang lebih lama (60 detik) dan gunakan 'domcontentloaded' agar tidak terlalu ketat
