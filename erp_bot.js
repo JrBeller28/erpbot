@@ -33,18 +33,43 @@ async function runBot() {
         await inputs[1].type(process.env.ERP_PASSWORD, { delay: 100 });
         console.log('Credentials entered...');
 
-        // 3. Cari tombol login secara dinamis berdasarkan teks
+        // ... (bagian isi username & password sudah benar)
+
+        // 3. Cari tombol "OK" (khas iDempiere)
         const loginBtnHandle = await page.evaluateHandle(() => {
-            const buttons = Array.from(document.querySelectorAll('button, .z-button, .z-button-os'));
+            // iDempiere biasanya menggunakan class .z-button
+            const buttons = Array.from(document.querySelectorAll('.z-button'));
+            
+            // Cari tombol yang teksnya mengandung "OK"
             return buttons.find(b => {
-                const txt = b.innerText.toLowerCase();
-                return txt.includes('login') || txt.includes('masuk') || txt.includes('sign in');
+                const txt = b.innerText.trim().toUpperCase();
+                return txt === 'OK' || txt.includes('OK');
             });
         });
+        
+        if (loginBtnHandle && loginBtnHandle.asElement()) {
+            console.log('Tombol OK ditemukan, mengklik...');
+            await Promise.all([
+                loginBtnHandle.asElement().click(),
+                // Tunggu sampai loading selesai (networkidle2)
+                page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {
+                    console.log("Navigasi setelah klik OK agak lambat, lanjut saja...");
+                })
+            ]);
+        } else {
+            // Fallback: Klik tombol biru pertama yang ada di form
+            console.log('Gagal cari teks OK, mencoba klik tombol biru default...');
+            await page.click('.z-button').catch(() => {
+                throw new Error("Gagal menemukan tombol OK untuk login.");
+            });
+        }
+        
+        // 4. Jeda tambahan (iDempiere sering loading dashboard setelah login)
+        await new Promise(r => setTimeout(r, 5000));
+        console.log('Berhasil melewati halaman login!');
 
         if (!loginBtnHandle) throw new Error("Tombol login tidak ditemukan di halaman!");
 
-        // 4. Klik dan tunggu navigasi
         console.log('Mengklik tombol login...');
         await Promise.all([
             loginBtnHandle.asElement().click(),
