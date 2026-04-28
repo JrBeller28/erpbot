@@ -80,46 +80,44 @@ try {
     console.log("Gagal di proses lookup, mencoba scraping langsung...");
 }
 
-// 4. PROSES SCRAPING (SELECTOR DIPERBARUI)
-const scrapedData = await page.evaluate((doc) => {
-    // 1. iDempiere menggunakan class .z-listitem untuk baris tabel detail (Move Line)
-    const rows = Array.from(document.querySelectorAll('.z-listitem'));
+// 4. PROSES SCRAPING
+try {
     console.log('Menunggu tabel Move Line muncul...');
+    // PINDAHKAN INI KE LUAR page.evaluate
     await page.waitForSelector('.z-listitem', { timeout: 15000 });
-    return rows.map(row => {
-        // 2. Ambil semua sel di dalam baris tersebut
-        const cols = Array.from(row.querySelectorAll('.z-listcell-content'));
+
+    const scrapedData = await page.evaluate((doc) => {
+        // Di sini kita hanya melakukan manipulasi DOM
+        const rows = Array.from(document.querySelectorAll('.z-listitem'));
         
-        // Jaga-jaga jika baris kosong atau bukan baris data
-        if (cols.length < 7) return null;
+        return rows.map(row => {
+            const cols = Array.from(row.querySelectorAll('.z-listcell-content'));
+            if (cols.length < 7) return null;
 
-        return {
-            nomorDokumen: doc,
-            // Index kolom dimulai dari 0:
-            // cols[1] = Quantity (misal: 80)
-            // cols[5] = Search Key / SKU (misal: FIT-BULKHEAD-HT-075)
-            // cols[6] = Product Name (misal: Bulkhead - Black - 3/4")
-            
-            sku: cols[5]?.innerText.trim(),     
-            barang: cols[6]?.innerText.trim(),  
-            qty: cols[1]?.innerText.trim(),     
-            locator: "PRP-PLG C1" // Sesuai header di screenshot Anda
-        };
-    }).filter(item => item !== null && item.sku !== "");
-}, docNumber);
-        await page.screenshot({ path: 'check_table.png' });
+            return {
+                nomorDokumen: doc,
+                sku: cols[5]?.innerText.trim(),     
+                barang: cols[6]?.innerText.trim(),  
+                qty: cols[1]?.innerText.trim(),     
+                locator: "PRP-PLG C1" 
+            };
+        }).filter(item => item !== null && item.sku !== "");
+    }, docNumber);
 
-        // 5. MENGIRIM DATA KE GOOGLE APPS SCRIPT
-        console.log('Mengirim ke GAS...');
-        const res = await axios.post(process.env.GAS_URL, {
-            action: "BOT_CALLBACK",
-            data: scrapedData
-        });
-        
-        console.log('Respon GAS:', res.data);
+    console.log(`Berhasil mendapatkan ${scrapedData.length} baris data.`);
+    await page.screenshot({ path: 'check_table.png' });
 
-    } catch (error) {
-        console.error('Bot Error:', error.message);
+    // 5. MENGIRIM DATA KE GAS
+    console.log('Mengirim ke GAS...');
+    const res = await axios.post(process.env.GAS_URL, {
+        action: "BOT_CALLBACK",
+        data: scrapedData
+    });
+    console.log('Respon GAS:', res.data);
+
+} catch (err) {
+    console.error('Bot Error saat scraping:', err.message);
+}
         // Simpan screenshot saat error untuk analisa
         await page.screenshot({ path: 'error_debug.png' });
         console.log('Screenshot error disimpan di error_debug.png');
