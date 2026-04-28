@@ -100,6 +100,7 @@ const scrapedData = await page.evaluate((doc) => {
         };
     }).filter(item => item !== null && item.sku !== "");
 }, docNumber);
+        await page.screenshot({ path: 'check_table.png' });
 
         // 5. MENGIRIM DATA KE GOOGLE APPS SCRIPT
         console.log('Mengirim ke GAS...');
