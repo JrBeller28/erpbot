@@ -34,19 +34,7 @@ async function runBot() {
         console.log('Credentials entered...');
 
         // ... (bagian isi username & password sudah benar)
-
-        // 3. Cari tombol "OK" (khas iDempiere)
-        const loginBtnHandle = await page.evaluateHandle(() => {
-            // iDempiere biasanya menggunakan class .z-button
-            const buttons = Array.from(document.querySelectorAll('.z-button'));
-            
-            // Cari tombol yang teksnya mengandung "OK"
-            return buttons.find(b => {
-                const txt = b.innerText.trim().toUpperCase();
-                return txt === 'OK' || txt.includes('OK');
-            });
-        });
-        
+       
         if (loginBtnHandle && loginBtnHandle.asElement()) {
             console.log('Tombol OK ditemukan, mengklik...');
             await Promise.all([
