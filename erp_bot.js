@@ -3,101 +3,105 @@ const axios = require('axios');
 require('dotenv').config();
 
 async function runBot() {
-  const browser = await puppeteer.launch({ 
-  headless: "new",
-  ignoreHTTPSErrors: true, // <--- TAMBAHKAN BARIS INI
-  args: [
-    '--no-sandbox', 
-    '--disable-setuid-sandbox',
-    '--ignore-certificate-errors', // <--- TAMBAHKAN INI JUGA DI ARGS
-    '--ignore-certificate-errors-spki-list'
-  ] 
-});
-  const page = await browser.newPage();
-try {
-    console.log('Login ke erp.tangki.id...');
-    await page.goto('https://erp.tangki.id/webui/index.zul', { waitUntil: 'networkidle2' });
-
-  await page.screenshot({ path: 'debug_login.png' });
-console.log('Screenshot disimpan untuk debug.');
-// 1. Tunggu input muncul
-await page.waitForSelector('input', { visible: true });
-const inputs = await page.$$('input');
-
-// 2. Isi data
-await inputs[0].type(process.env.ERP_USERNAME, { delay: 100 });
-await inputs[1].type(process.env.ERP_PASSWORD, { delay: 100 });
-
-// 3. Cari dan Klik tombol Login dengan selector yang pasti
-// Kita definisikan selectornya di scope atas (Node.js)
-const loginButtonSelector = '.z-button'; 
-
-await page.waitForSelector(loginButtonSelector);
-
-// Gunakan Promise.all untuk menangani navigasi setelah klik
-await Promise.all([
-    page.click(loginButtonSelector),
-    page.waitForNavigation({ waitUntil: 'networkidle2' }).catch(() => null)
-]);
-
-console.log('Login berhasil diklik!');
-}
-// Cara mencari tombol berdasarkan teks tanpa bikin ReferenceError
-const loginBtnHandle = await page.evaluateHandle(() => {
-    const buttons = Array.from(document.querySelectorAll('button, .z-button'));
-    return buttons.find(b => b.innerText.includes('Login') || b.innerText.includes('Masuk'));
-});
-
-if (loginBtnHandle) {
-    await loginBtnHandle.click();
-} else {
-    console.log("Tombol login tidak ditemukan!");
-}
-    
-    // Gunakan Promise.all untuk menunggu navigasi SETELAH klik
-    await Promise.all([
-        page.click(loginBtn),
-        page.waitForNavigation({ waitUntil: 'networkidle2' }).catch(() => null) 
-    ]);
-
-    console.log('Login berhasil!');
-    // ... (sisa kode scraping)
-
-    // 3. MENUJU HALAMAN DOKUMEN SPESIFIK
-    const docNumber = process.env.DOC_NUMBER; // Mengambil nomor "MM/1001699/..."
-    const targetUrl = `https://erp.tangki.co.id/inventory-move/${encodeURIComponent(docNumber)}`;
-    console.log(`Menuju halaman dokumen: ${targetUrl}`);
-    await page.goto(targetUrl, { waitUntil: 'networkidle2' });
-
-    // 4. PROSES SCRAPING
-    const scrapedData = await page.evaluate((docNumber) => {
-        const rows = Array.from(document.querySelectorAll('table tbody tr'));
-        return rows.map(row => {
-            const cols = row.querySelectorAll('td');
-            return {
-                nomorDokumen: docNumber, 
-                sku: cols[0]?.innerText.trim(),     // Sesuaikan dengan urutan kolom
-                barang: cols[1]?.innerText.trim(),  // Sesuaikan dengan urutan kolom
-                qty: cols[2]?.innerText.trim(),     // Sesuaikan dengan urutan kolom
-                locator: cols[3]?.innerText.trim()  // Sesuaikan dengan urutan kolom
-            };
-        });
-    }, docNumber); // Memasukkan variabel docNumber ke dalam fungsi browser
-
-    console.log('Data didapat, mengirim ke GAS...', scrapedData);
-    
-    // 5. MENGIRIM DATA KE GOOGLE APPS SCRIPT
-    await axios.post(process.env.GAS_URL, { 
-        action: "BOT_CALLBACK",
-        data: scrapedData 
+    const browser = await puppeteer.launch({
+        headless: "new",
+        ignoreHTTPSErrors: true,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--ignore-certificate-errors',
+            '--ignore-certificate-errors-spki-list'
+        ]
     });
-    console.log('Berhasil dikirim!');
 
-  } catch (error) {
-    console.error('Bot Error:', error);
-  } finally {
-    await browser.close();
-  }
+    const page = await browser.newPage();
+    // Set User Agent agar tidak terdeteksi sebagai bot dasar
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
+    try {
+        console.log('Login ke erp.tangki.id...');
+        await page.goto('https://erp.tangki.id/webui/index.zul', { waitUntil: 'networkidle2', timeout: 60000 });
+
+        // 1. Tunggu input muncul & ambil screenshot untuk debug jika perlu
+        await page.waitForSelector('input', { visible: true, timeout: 30000 });
+        const inputs = await page.$$('input');
+
+        if (inputs.length < 2) throw new Error("Field input login tidak ditemukan!");
+
+        // 2. Isi data login
+        await inputs[0].type(process.env.ERP_USERNAME, { delay: 100 });
+        await inputs[1].type(process.env.ERP_PASSWORD, { delay: 100 });
+        console.log('Credentials entered...');
+
+        // 3. Cari tombol login secara dinamis berdasarkan teks
+        const loginBtnHandle = await page.evaluateHandle(() => {
+            const buttons = Array.from(document.querySelectorAll('button, .z-button, .z-button-os'));
+            return buttons.find(b => {
+                const txt = b.innerText.toLowerCase();
+                return txt.includes('login') || txt.includes('masuk') || txt.includes('sign in');
+            });
+        });
+
+        if (!loginBtnHandle) throw new Error("Tombol login tidak ditemukan di halaman!");
+
+        // 4. Klik dan tunggu navigasi
+        console.log('Mengklik tombol login...');
+        await Promise.all([
+            loginBtnHandle.asElement().click(),
+            page.waitForNavigation({ waitUntil: 'networkidle2' }).catch(() => null)
+        ]);
+
+        // Beri jeda sebentar untuk loading dashboard ZK
+        await new Promise(r => setTimeout(r, 3000));
+
+        // 5. MENUJU HALAMAN DOKUMEN SPESIFIK
+        const docNumber = process.env.DOC_NUMBER;
+        const targetUrl = `https://erp.tangki.id/inventory-move/${encodeURIComponent(docNumber)}`;
+        console.log(`Menuju halaman dokumen: ${targetUrl}`);
+        
+        await page.goto(targetUrl, { waitUntil: 'networkidle2' });
+        await page.waitForSelector('table', { timeout: 20000 }).catch(() => console.log("Warning: Tabel tidak muncul, mencoba scraping langsung..."));
+
+        // 6. PROSES SCRAPING
+        const scrapedData = await page.evaluate((doc) => {
+            const rows = Array.from(document.querySelectorAll('table tbody tr, .z-listitem, .z-row'));
+            return rows.map(row => {
+                const cols = row.querySelectorAll('td, .z-listcell-content, .z-row-content');
+                if (cols.length < 2) return null;
+                return {
+                    nomorDokumen: doc,
+                    sku: cols[0]?.innerText.trim(),
+                    barang: cols[1]?.innerText.trim(),
+                    qty: cols[2]?.innerText.trim(),
+                    locator: cols[3]?.innerText.trim()
+                };
+            }).filter(item => item !== null && item.sku !== "");
+        }, docNumber);
+
+        if (scrapedData.length === 0) {
+            console.log('Data kosong, periksa selector tabel Anda.');
+        } else {
+            console.log(`Berhasil mendapatkan ${scrapedData.length} baris data.`);
+        }
+
+        // 7. MENGIRIM DATA KE GOOGLE APPS SCRIPT
+        console.log('Mengirim ke GAS...');
+        const res = await axios.post(process.env.GAS_URL, {
+            action: "BOT_CALLBACK",
+            data: scrapedData
+        });
+        
+        console.log('Respon GAS:', res.data);
+
+    } catch (error) {
+        console.error('Bot Error:', error.message);
+        // Simpan screenshot saat error untuk analisa
+        await page.screenshot({ path: 'error_debug.png' });
+        console.log('Screenshot error disimpan di error_debug.png');
+    } finally {
+        await browser.close();
+        console.log('Browser ditutup.');
+    }
 }
 
 runBot();
