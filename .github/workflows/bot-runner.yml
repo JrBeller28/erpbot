@@ -1,3 +1,5 @@
+name: Bot Ekstraktor ERP
+
 on:
   workflow_dispatch:
     inputs:
@@ -10,11 +12,25 @@ jobs:
   scrape:
     runs-on: ubuntu-latest
     steps:
-      # ... langkah-langkah sebelumnya ...
+      # 1. Mengambil kode dari repository ke mesin virtual GitHub
+      - name: Tarik Kode dari Repo
+        uses: actions/checkout@v3
+
+      # 2. Menyiapkan Node.js agar bot bisa berjalan
+      - name: Siapkan Environment Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      # 3. Menginstal library yang ada di package.json (puppeteer, axios, dll)
+      - name: Install Library
+        run: npm install
+
+      # 4. Menjalankan file bot
       - name: Jalankan Bot
         env:
           ERP_USERNAME: ${{ secrets.ERP_USERNAME }}
           ERP_PASSWORD: ${{ secrets.ERP_PASSWORD }}
           GAS_URL: ${{ secrets.GAS_URL }}
-          DOC_NUMBER: ${{ github.event.inputs.docNumber }} # Ambil input dari GAS
+          DOC_NUMBER: ${{ github.event.inputs.docNumber }} 
         run: node erp_bot.js
