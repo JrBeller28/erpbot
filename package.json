@@ -1,0 +1,9 @@
+{
+  "name": "erp-scraper-bot",
+  "version": "1.0.0",
+  "dependencies": {
+    "puppeteer": "^21.0.0",
+    "axios": "^1.5.0",
+    "dotenv": "^16.3.1"
+  }
+}
