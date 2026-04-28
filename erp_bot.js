@@ -28,54 +28,32 @@ async function runBot() {
 
         if (inputs.length < 2) throw new Error("Field input login tidak ditemukan!");
 
-        // 2. Isi data login
-        await inputs[0].type(process.env.ERP_USERNAME, { delay: 100 });
-        await inputs[1].type(process.env.ERP_PASSWORD, { delay: 100 });
-        console.log('Credentials entered...');
+       // 1. ISI DATA
+await inputs[0].type(process.env.ERP_USERNAME, { delay: 100 });
+await inputs[1].type(process.env.ERP_PASSWORD, { delay: 100 });
 
-        // ... (bagian isi username & password sudah benar)
-       
-        if (loginBtnHandle && loginBtnHandle.asElement()) {
-            console.log('Tombol OK ditemukan, mengklik...');
-            await Promise.all([
-                loginBtnHandle.asElement().click(),
-                // Tunggu sampai loading selesai (networkidle2)
-                page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {
-                    console.log("Navigasi setelah klik OK agak lambat, lanjut saja...");
-                })
-            ]);
-        } else {
-            // Fallback: Klik tombol biru pertama yang ada di form
-            console.log('Gagal cari teks OK, mencoba klik tombol biru default...');
-            await page.click('.z-button').catch(() => {
-                throw new Error("Gagal menemukan tombol OK untuk login.");
-            });
-        }
-        
-        // 4. Jeda tambahan (iDempiere sering loading dashboard setelah login)
-        await new Promise(r => setTimeout(r, 5000));
-        console.log('Berhasil melewati halaman login!');
+// 2. KLIK TOMBOL OK (DAN HANYA INI)
+const okBtn = await page.evaluateHandle(() => {
+    return Array.from(document.querySelectorAll('.z-button'))
+                .find(b => b.innerText.trim().toUpperCase() === 'OK');
+});
 
-        if (!loginBtnHandle) throw new Error("Tombol login tidak ditemukan di halaman!");
+if (okBtn && okBtn.asElement()) {
+    console.log('Tombol OK ditemukan, mengklik...');
+    await Promise.all([
+        okBtn.asElement().click(),
+        page.waitForNavigation({ waitUntil: 'networkidle2' }).catch(() => null)
+    ]);
+}
 
-        console.log('Mengklik tombol login...');
-        await Promise.all([
-            loginBtnHandle.asElement().click(),
-            page.waitForNavigation({ waitUntil: 'networkidle2' }).catch(() => null)
-        ]);
+console.log('Berhasil melewati halaman login!');
 
-        // Beri jeda sebentar untuk loading dashboard ZK
-        await new Promise(r => setTimeout(r, 3000));
+// 3. LANGSUNG LANJUT KE HALAMAN DOKUMEN
+const docNumber = process.env.DOC_NUMBER;
+const targetUrl = `https://erp.tangki.id/inventory-move/${encodeURIComponent(docNumber)}`;
+await page.goto(targetUrl, { waitUntil: 'networkidle2' });
 
-        // 5. MENUJU HALAMAN DOKUMEN SPESIFIK
-        const docNumber = process.env.DOC_NUMBER;
-        const targetUrl = `https://erp.tangki.id/inventory-move/${encodeURIComponent(docNumber)}`;
-        console.log(`Menuju halaman dokumen: ${targetUrl}`);
-        
-        await page.goto(targetUrl, { waitUntil: 'networkidle2' });
-        await page.waitForSelector('table', { timeout: 20000 }).catch(() => console.log("Warning: Tabel tidak muncul, mencoba scraping langsung..."));
-
-        // 6. PROSES SCRAPING
+        // 4. PROSES SCRAPING
         const scrapedData = await page.evaluate((doc) => {
             const rows = Array.from(document.querySelectorAll('table tbody tr, .z-listitem, .z-row'));
             return rows.map(row => {
@@ -97,7 +75,7 @@ async function runBot() {
             console.log(`Berhasil mendapatkan ${scrapedData.length} baris data.`);
         }
 
-        // 7. MENGIRIM DATA KE GOOGLE APPS SCRIPT
+        // 5. MENGIRIM DATA KE GOOGLE APPS SCRIPT
         console.log('Mengirim ke GAS...');
         const res = await axios.post(process.env.GAS_URL, {
             action: "BOT_CALLBACK",
