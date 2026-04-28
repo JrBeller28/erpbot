@@ -1,30 +1,20 @@
-name: Bot Ekstraktor ERP
-
 on:
-  schedule:
-    # Menjalankan bot secara otomatis setiap hari pada jam 08:00 WIB (01:00 UTC)
-    - cron: '0 1 * * *'
-  workflow_dispatch: 
-    # Mengizinkan bot dipicu secara manual via klik tombol di GitHub atau API call
+  workflow_dispatch:
+    inputs:
+      docNumber:
+        description: 'Nomor Dokumen MM untuk di-scrape'
+        required: true
+        default: ''
 
 jobs:
-  scrape-and-sync:
+  scrape:
     runs-on: ubuntu-latest
     steps:
-      - name: Tarik Kode dari Repo
-        uses: actions/checkout@v3
-
-      - name: Siapkan Environment Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-
-      - name: Install Library
-        run: npm install
-
-      - name: Jalankan Bot Puppeteer
+      # ... langkah-langkah sebelumnya ...
+      - name: Jalankan Bot
         env:
           ERP_USERNAME: ${{ secrets.ERP_USERNAME }}
           ERP_PASSWORD: ${{ secrets.ERP_PASSWORD }}
           GAS_URL: ${{ secrets.GAS_URL }}
+          DOC_NUMBER: ${{ github.event.inputs.docNumber }} # Ambil input dari GAS
         run: node erp_bot.js
