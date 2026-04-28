@@ -18,6 +18,8 @@ try {
     console.log('Login ke erp.tangki.id...');
     await page.goto('https://erp.tangki.id/webui/index.zul', { waitUntil: 'networkidle2' });
 
+  await page.screenshot({ path: 'debug_login.png' });
+console.log('Screenshot disimpan untuk debug.');
     // Tunggu sampai minimal ada satu input muncul
 await page.waitForSelector('input', { visible: true, timeout: 60000 });
 
