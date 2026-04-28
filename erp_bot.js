@@ -82,21 +82,28 @@ try {
 
 // 4. PROSES SCRAPING (SELECTOR DIPERBARUI)
 const scrapedData = await page.evaluate((doc) => {
-    // iDempiere menggunakan .z-listitem untuk baris tabel
+    // 1. iDempiere menggunakan class .z-listitem untuk baris tabel detail (Move Line)
     const rows = Array.from(document.querySelectorAll('.z-listitem'));
-    
+    console.log('Menunggu tabel Move Line muncul...');
+    await page.waitForSelector('.z-listitem', { timeout: 15000 });
     return rows.map(row => {
-        // Ambil semua sel (cell) dalam baris tersebut
+        // 2. Ambil semua sel di dalam baris tersebut
         const cols = Array.from(row.querySelectorAll('.z-listcell-content'));
         
-        if (cols.length < 3) return null;
+        // Jaga-jaga jika baris kosong atau bukan baris data
+        if (cols.length < 7) return null;
 
         return {
             nomorDokumen: doc,
-            sku: cols[2]?.innerText.trim(),     // Sesuaikan index kolom berdasarkan tampilan
-            barang: cols[3]?.innerText.trim(),  // Biasanya kolom 3 atau 4
-            qty: cols[1]?.innerText.trim(),     // Sesuaikan index
-            locator: cols[0]?.innerText.trim()  // Sesuaikan index
+            // Index kolom dimulai dari 0:
+            // cols[1] = Quantity (misal: 80)
+            // cols[5] = Search Key / SKU (misal: FIT-BULKHEAD-HT-075)
+            // cols[6] = Product Name (misal: Bulkhead - Black - 3/4")
+            
+            sku: cols[5]?.innerText.trim(),     
+            barang: cols[6]?.innerText.trim(),  
+            qty: cols[1]?.innerText.trim(),     
+            locator: "PRP-PLG C1" // Sesuai header di screenshot Anda
         };
     }).filter(item => item !== null && item.sku !== "");
 }, docNumber);
