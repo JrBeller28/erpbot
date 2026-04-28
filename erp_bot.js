@@ -15,7 +15,7 @@ async function runBot() {
     await page.goto(targetUrl, { waitUntil: 'networkidle2' });
     
     // Ganti selector sesuai dengan HTML web ERP
-    await page.type('#email', process.env.ERP_USERNAME);
+    await page.type('input[name="username"]', process.env.ERP_USERNAME);
     await page.type('#password', process.env.ERP_PASSWORD);
     await page.click('button[type="submit"]');
     await page.waitForNavigation({ waitUntil: 'networkidle2' });
@@ -29,17 +29,23 @@ async function runBot() {
         const rows = Array.from(document.querySelectorAll('table tbody tr'));
         return rows.map(row => {
             const cols = row.querySelectorAll('td');
+            // KODE BARU (Contoh urutan):
             return {
-                nomorDokumen: cols[0]?.innerText.trim(),
-                sku: cols[1]?.innerText.trim(),
-                qty: cols[2]?.innerText.trim()
+                nomorDokumen: docNumber, // Langsung ambil dari variabel di atas
+                sku: cols[0]?.innerText.trim(),     // Sesuaikan [0] dengan urutan kolom SKU di ERP
+                barang: cols[1]?.innerText.trim(),  // Sesuaikan [1] dengan urutan kolom Nama Barang
+                qty: cols[2]?.innerText.trim(),     // Sesuaikan [2] dengan urutan kolom Qty
+                locator: cols[3]?.innerText.trim()  // Sesuaikan [3] dengan urutan kolom Locator
             };
         });
     });
 
     console.log('Data didapat, mengirim ke GAS...');
     // Mengirim data ke URL doPost Google Apps Script
-    await axios.post(process.env.GAS_URL, { data: scrapedData });
+    await axios.post(process.env.GAS_URL, { 
+    action: "BOT_CALLBACK",
+    data: scrapedData 
+    });
     console.log('Berhasil dikirim!');
 
   } catch (error) {
