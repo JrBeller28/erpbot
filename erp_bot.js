@@ -13,11 +13,11 @@ async function runBot() {
     console.log('Login ke erp.tangki.id...');
     
     // 1. MENUJU HALAMAN LOGIN DULU
-    await page.goto('https://erp.tangki.co.id/login', { waitUntil: 'networkidle2' });
+    await page.goto('https://erp.tangki.id/webui/index.zul', { waitUntil: 'networkidle2' });
     
     // 2. PROSES LOGIN
     // PENTING: Ganti selector di bawah ini jika di web ERP Anda id-nya bukan #email atau #password
-    await page.type('#email', process.env.ERP_USERNAME);
+    await page.type('#username', process.env.ERP_USERNAME);
     await page.type('#password', process.env.ERP_PASSWORD);
     await page.click('button[type="submit"]');
     await page.waitForNavigation({ waitUntil: 'networkidle2' });
