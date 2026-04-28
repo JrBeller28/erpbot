@@ -62,11 +62,32 @@ try {
     await searchInputs[0].type(docNumber, { delay: 100 });
     console.log('Nomor dokumen diketik...');
 
-    // Klik tombol centang biru (OK) di pojok kanan bawah jendela lookup
-    const confirmBtn = await page.evaluateHandle(() => {
-        return Array.from(document.querySelectorAll('.z-button'))
-                    .find(b => b.querySelector('.z-button-image') || b.innerText.includes('OK') || b.classList.contains('z-button-os'));
-    });
+    // ... (setelah mengetik nomor dokumen)
+console.log('Nomor dokumen diketik, menekan Enter...');
+
+// Tekan Enter untuk memicu pencarian (lebih stabil di iDempiere daripada klik tombol)
+await page.keyboard.press('Enter');
+
+// Beri jeda sedikit
+await new Promise(r => setTimeout(r, 2000));
+
+// Klik tombol OK/Ceklis sebagai cadangan
+const confirmBtn = await page.evaluateHandle(() => {
+    const buttons = Array.from(document.querySelectorAll('.z-button'));
+    return buttons.find(b => b.querySelector('.z-button-image') || b.innerText.includes('OK'));
+});
+
+if (confirmBtn && confirmBtn.asElement()) {
+    await confirmBtn.asElement().click();
+    console.log('Tombol konfirmasi diklik manual...');
+}
+
+// Tunggu loading iDempiere (penting!)
+console.log('Menunggu render tabel detail...');
+await new Promise(r => setTimeout(r, 10000)); 
+
+// Gunakan selector yang lebih umum jika .z-listitem gagal
+await page.waitForSelector('.z-listitem, .z-row, .z-listcell', { timeout: 20000 });
 
     if (confirmBtn && confirmBtn.asElement()) {
         await confirmBtn.asElement().click();
