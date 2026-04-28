@@ -8,7 +8,11 @@ async function runBot() {
 
   try {
     console.log('Login ke erp.tangki.id...');
-    await page.goto('https://erp.tangki.co.id/login', { waitUntil: 'networkidle2' });
+    // KODE BARU:
+    const docNumber = process.env.DOC_NUMBER; // Mengambil nomor "MM/1001699/..."
+    const targetUrl = `https://erp.tangki.co.id/inventory-move/${encodeURIComponent(docNumber)}`;
+    console.log(`Menuju halaman dokumen: ${targetUrl}`);
+    await page.goto(targetUrl, { waitUntil: 'networkidle2' });
     
     // Ganti selector sesuai dengan HTML web ERP
     await page.type('#email', process.env.ERP_USERNAME);
