@@ -5,8 +5,14 @@ require('dotenv').config();
 async function runBot() {
   const browser = await puppeteer.launch({ 
   headless: "new",
-  args: ['--no-sandbox', '--disable-setuid-sandbox'] 
-  });
+  ignoreHTTPSErrors: true, // <--- TAMBAHKAN BARIS INI
+  args: [
+    '--no-sandbox', 
+    '--disable-setuid-sandbox',
+    '--ignore-certificate-errors', // <--- TAMBAHKAN INI JUGA DI ARGS
+    '--ignore-certificate-errors-spki-list'
+  ] 
+});
   const page = await browser.newPage();
 
   try {
