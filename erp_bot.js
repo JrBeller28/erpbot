@@ -83,37 +83,52 @@ try {
 // 4. PROSES SCRAPING
 try {
     console.log('Menunggu tabel Move Line muncul...');
-    // PINDAHKAN INI KE LUAR page.evaluate
-    await page.waitForSelector('.z-listitem', { timeout: 15000 });
+    await page.waitForSelector('.z-listitem');
+    await new Promise(r => setTimeout(r, 3000)); // Tambahan 3 detik;
 
-    const scrapedData = await page.evaluate((doc) => {
-        // Di sini kita hanya melakukan manipulasi DOM
+    const scrapedData = await page.evaluate((doc) => 
+        console.log("Kolom 0: " + cols[0]?.innerText);
+        {
         const rows = Array.from(document.querySelectorAll('.z-listitem'));
         
         return rows.map(row => {
             const cols = Array.from(row.querySelectorAll('.z-listcell-content'));
-            if (cols.length < 7) return null;
+            
+            // iDempiere seringkali punya kolom kosong di awal (checkbox)
+            // Kita coba ambil data dengan pemetaan yang lebih teliti sesuai screenshot terakhir:
+            // Index 1: Quantity
+            // Index 5: Search Key (SKU)
+            // Index 6: Product
+            
+            const rawSku = cols[5]?.innerText.trim();
+            const rawBarang = cols[6]?.innerText.trim();
+            const rawQty = cols[1]?.innerText.trim();
+
+            if (!rawSku || rawSku === "") return null;
 
             return {
                 nomorDokumen: doc,
-                sku: cols[5]?.innerText.trim(),     
-                barang: cols[6]?.innerText.trim(),  
-                qty: cols[1]?.innerText.trim(),     
+                sku: rawSku,     
+                barang: rawBarang,  
+                qty: rawQty,     
                 locator: "PRP-PLG C1" 
             };
-        }).filter(item => item !== null && item.sku !== "");
+        }).filter(item => item !== null);
     }, docNumber);
 
     console.log(`Berhasil mendapatkan ${scrapedData.length} baris data.`);
-    await page.screenshot({ path: 'check_table.png' });
-
-    // 5. MENGIRIM DATA KE GAS
-    console.log('Mengirim ke GAS...');
-    const res = await axios.post(process.env.GAS_URL, {
-        action: "BOT_CALLBACK",
-        data: scrapedData
-    });
-    console.log('Respon GAS:', res.data);
+    
+    // Kirim data hanya jika ada isinya
+    if (scrapedData.length > 0) {
+        console.log('Mengirim ke GAS...');
+        const res = await axios.post(process.env.GAS_URL, {
+            action: "BOT_CALLBACK",
+            data: scrapedData
+        });
+        console.log('Respon GAS:', res.data);
+    } else {
+        console.log('Tidak ada data yang valid untuk dikirim.');
+    }
 
 } catch (err) {
     console.error('Bot Error saat scraping:', err.message);
