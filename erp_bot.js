@@ -20,19 +20,27 @@ try {
 
   await page.screenshot({ path: 'debug_login.png' });
 console.log('Screenshot disimpan untuk debug.');
-    // Tunggu sampai minimal ada satu input muncul
-await page.waitForSelector('input', { visible: true, timeout: 60000 });
-
-// Ambil semua input yang ada di halaman
+// 1. Tunggu input muncul
+await page.waitForSelector('input', { visible: true });
 const inputs = await page.$$('input');
 
-if (inputs.length >= 2) {
-    // Input pertama biasanya Username
-    await inputs[0].type(process.env.ERP_USERNAME, { delay: 100 });
-    // Input kedua biasanya Password
-    await inputs[1].type(process.env.ERP_PASSWORD, { delay: 100 });
-} else {
-    throw new Error("Gagal menemukan field input login!");
+// 2. Isi data
+await inputs[0].type(process.env.ERP_USERNAME, { delay: 100 });
+await inputs[1].type(process.env.ERP_PASSWORD, { delay: 100 });
+
+// 3. Cari dan Klik tombol Login dengan selector yang pasti
+// Kita definisikan selectornya di scope atas (Node.js)
+const loginButtonSelector = '.z-button'; 
+
+await page.waitForSelector(loginButtonSelector);
+
+// Gunakan Promise.all untuk menangani navigasi setelah klik
+await Promise.all([
+    page.click(loginButtonSelector),
+    page.waitForNavigation({ waitUntil: 'networkidle2' }).catch(() => null)
+]);
+
+console.log('Login berhasil diklik!');
 }
 // Cara mencari tombol berdasarkan teks tanpa bikin ReferenceError
 const loginBtnHandle = await page.evaluateHandle(() => {
