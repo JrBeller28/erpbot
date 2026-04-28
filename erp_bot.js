@@ -46,12 +46,27 @@ if (okBtn && okBtn.asElement()) {
     ]);
 }
 
-console.log('Berhasil melewati halaman login!');
-
-// 3. LANGSUNG LANJUT KE HALAMAN DOKUMEN
-const docNumber = process.env.DOC_NUMBER;
-const targetUrl = `https://erp.tangki.id/inventory-move/${encodeURIComponent(docNumber)}`;
-await page.goto(targetUrl, { waitUntil: 'networkidle2' });
+        console.log('Berhasil melewati halaman login!');
+        
+        // 3. LANGSUNG LANJUT KE HALAMAN DOKUMEN
+        const docNumber = process.env.DOC_NUMBER;
+        const targetUrl = `https://erp.tangki.id/inventory-move/${encodeURIComponent(docNumber)}`;
+        console.log(`Menuju halaman dokumen: ${targetUrl}`);
+        
+        // Tambahkan timeout yang lebih lama (60 detik) dan gunakan 'domcontentloaded' agar tidak terlalu ketat
+        await page.goto(targetUrl, { 
+            waitUntil: 'domcontentloaded', 
+            timeout: 60000 
+        }).catch(err => console.log("Navigasi timeout, tapi mencoba lanjut scraping..."));
+        
+        // Jeda manual 5-10 detik karena iDempiere sering loading internal (AJAX) setelah halaman terbuka
+        console.log('Menunggu render data iDempiere...');
+        await new Promise(r => setTimeout(r, 8000)); 
+        
+        // Pastikan salah satu elemen tabel muncul sebelum scraping
+        await page.waitForSelector('.z-listitem, .z-row, td', { timeout: 15000 }).catch(() => {
+            console.log("Data tabel belum muncul, mungkin dokumen tidak ditemukan atau loading sangat lambat.");
+        });
 
         // 4. PROSES SCRAPING
         const scrapedData = await page.evaluate((doc) => {
