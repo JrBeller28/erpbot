@@ -34,13 +34,17 @@ if (inputs.length >= 2) {
 } else {
     throw new Error("Gagal menemukan field input login!");
 }
-
-// Cari tombol login berdasarkan teks atau class umum ZK
-await page.evaluate(() => {
+// Cara mencari tombol berdasarkan teks tanpa bikin ReferenceError
+const loginBtnHandle = await page.evaluateHandle(() => {
     const buttons = Array.from(document.querySelectorAll('button, .z-button'));
-    const loginBtn = buttons.find(b => b.innerText.includes('Login') || b.innerText.includes('Masuk'));
-    if (loginBtn) loginBtn.click();
+    return buttons.find(b => b.innerText.includes('Login') || b.innerText.includes('Masuk'));
 });
+
+if (loginBtnHandle) {
+    await loginBtnHandle.click();
+} else {
+    console.log("Tombol login tidak ditemukan!");
+}
     
     // Gunakan Promise.all untuk menunggu navigasi SETELAH klik
     await Promise.all([
