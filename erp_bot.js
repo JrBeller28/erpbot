@@ -83,27 +83,25 @@ try {
 // 4. PROSES SCRAPING
 try {
     console.log('Menunggu tabel Move Line muncul...');
-    await page.waitForSelector('.z-listitem');
-    await new Promise(r => setTimeout(r, 3000)); // Tambahan 3 detik;
+    await page.waitForSelector('.z-listitem', { timeout: 20000 });
+    await new Promise(r => setTimeout(r, 3000)); // Jeda 3 detik agar render sempurna
 
-    const scrapedData = await page.evaluate((doc) => 
-        console.log("Kolom 0: " + cols[0]?.innerText);
-        {
+    const scrapedData = await page.evaluate((doc) => {
         const rows = Array.from(document.querySelectorAll('.z-listitem'));
         
         return rows.map(row => {
             const cols = Array.from(row.querySelectorAll('.z-listcell-content'));
             
-            // iDempiere seringkali punya kolom kosong di awal (checkbox)
-            // Kita coba ambil data dengan pemetaan yang lebih teliti sesuai screenshot terakhir:
+            // iDempiere Map (Berdasarkan screenshot Anda):
             // Index 1: Quantity
             // Index 5: Search Key (SKU)
-            // Index 6: Product
+            // Index 6: Product Name
             
             const rawSku = cols[5]?.innerText.trim();
             const rawBarang = cols[6]?.innerText.trim();
             const rawQty = cols[1]?.innerText.trim();
 
+            // Hanya ambil jika SKU tidak kosong
             if (!rawSku || rawSku === "") return null;
 
             return {
@@ -118,7 +116,6 @@ try {
 
     console.log(`Berhasil mendapatkan ${scrapedData.length} baris data.`);
     
-    // Kirim data hanya jika ada isinya
     if (scrapedData.length > 0) {
         console.log('Mengirim ke GAS...');
         const res = await axios.post(process.env.GAS_URL, {
@@ -127,7 +124,7 @@ try {
         });
         console.log('Respon GAS:', res.data);
     } else {
-        console.log('Tidak ada data yang valid untuk dikirim.');
+        console.log('Tidak ada data yang valid untuk dikirim. Cek index kolom atau render tabel.');
     }
 
 } catch (err) {
